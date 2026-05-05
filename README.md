@@ -3,7 +3,7 @@ LunarTTS 2 is a WIP FastSpeech2 modification that adds Text Predicting GSTs infl
 
 This model uses Hierarchical GST (HGST) with contextual embeddings from RoBERTa to infer style from text directly
 
-A TPSE module (lightweight FC + GRU) learns to map RoBERTa embeddings to GST latent space, enabling implicit emotion from text only.
+A TPSE module (lightweight FC + GRU) learns to map RoBERTa embeddings to the GST latent space, enabling implicit emotion inference from text alone.
 
 
 
@@ -13,7 +13,7 @@ A TPSE module (lightweight FC + GRU) learns to map RoBERTa embeddings to GST lat
 # Contribuiting
 All PRs are welcome, but make sure you:
 - Test your feature so that it actually works
-- Do not vibecode ffs
+- Do not vibecode, please.
 - Try to make your code clean
 - Make sure you describe whatever PR you are working on
 
@@ -23,7 +23,8 @@ If you have a question or an issue, then make an issue on it and I _should_ resp
 # Pretrain model
 TBA
 There will be a release once I feel the architecture is stable and mature enough.
-If you want, go ahead and train your own, but this repo is constantly changing, and your model could be out of date.
+
+Feel free to train your own, but this repo is constantly changing, and your model could be out of date.
 
 # Updates
 5.5.2026 - Uploaded to GitHub
@@ -31,7 +32,9 @@ If you want, go ahead and train your own, but this repo is constantly changing, 
 
 # Credits
 https://github.com/lightbooster/TP-GST-BERT-Tacotron2 - TPSE implementation, some ideas, and GST implementation
+
 https://github.com/ming024/FastSpeech2 - FastSpeech2 implementation I used
-https://rf5.github.io/2022/10/18/hgst.html - Guidence on HGSTs
+
+https://rf5.github.io/2022/10/18/hgst.html - Guidance on HGSTs
 
 
