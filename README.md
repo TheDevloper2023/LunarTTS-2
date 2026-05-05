@@ -1,7 +1,7 @@
 # LunarTTS-2
-LunarTTS 2 is a WIP FastSpeech2 modification that adds Text Predicting GSTs influenced by BERT to create a Context-aware, emotion-conditioned FastSpeech2 Architecture
+LunarTTS 2 is a WIP FastSpeech2 modification that adds Text Predicting GSTs influenced by RoBERTa to create a Context-aware, emotion-conditioned FastSpeech2 Architecture
 
-This model uses Hierarchical GST with contextual embeddings from RoBERTa to infer style from text directly
+This model uses Hierarchical GST (HGST) with contextual embeddings from RoBERTa to infer style from text directly
 
 A TPSE module (lightweight FC + GRU) learns to map RoBERTa embeddings to GST latent space, enabling implicit emotion from text only.
 
@@ -27,3 +27,11 @@ If you want, go ahead and train your own, but this repo is constantly changing, 
 
 # Updates
 5.5.2026 - Uploaded to GitHub
+
+
+# Credits
+https://github.com/lightbooster/TP-GST-BERT-Tacotron2 - TPSE implementation, some ideas, and GST implementation
+https://github.com/ming024/FastSpeech2 - FastSpeech2 implementation I used
+https://rf5.github.io/2022/10/18/hgst.html - Guidence on HGSTs
+
+
