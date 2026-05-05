@@ -37,12 +37,15 @@ def main(args, configs):
         "train.txt", preprocess_config, train_config, sort=True, drop_last=True
     )
     batch_size = train_config["optimizer"]["batch_size"]
-    group_size = 1  # Set this larger than 1 to enable sorting in Dataset
+    group_size = 4  # Set this larger than 1 to enable sorting in Dataset
     print(len(dataset), batch_size)
     assert batch_size * group_size < len(dataset)
     loader = DataLoader(
         dataset,
         batch_size=batch_size * group_size,
+        num_workers= 4,
+        pin_memory= True,
+        persistent_workers= True,
         shuffle=True,
         collate_fn=dataset.collate_fn,
     )

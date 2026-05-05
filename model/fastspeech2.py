@@ -119,7 +119,7 @@ class FastSpeech2(nn.Module):
             bert_embed_expanded = bert_embed.unsqueeze(1).expand(-1, output.size(1), -1)
             combined_embed = torch.cat([output, bert_embed_expanded], dim=-1)
             tpse_out = self.bert_linear(combined_embed)
-            tpse_out = tpse_out.unsqueeze(1).expand(-1, output.size(1), -1)
+            tpse_out = tpse_out.unsqueeze(1)          
         
         if self.speaker_emb is not None:
             output = output + self.speaker_emb(speakers).unsqueeze(1).expand(
