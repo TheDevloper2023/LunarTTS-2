@@ -70,10 +70,11 @@ class Preprocessor:
                 if ".wav" not in wav_name:
                     continue
 
-                basename = wav_name.split(".")[0]
+                basename = os.path.splitext(wav_name)[0]
                 tg_path = os.path.join(
                     self.out_dir, "TextGrid", speaker, "{}.TextGrid".format(basename)
                 )
+                print("Now we are doing " + basename)
                 if os.path.exists(tg_path):
                     ret = self.process_utterance(speaker, basename)
                     if ret is None:
@@ -81,6 +82,9 @@ class Preprocessor:
                     else:
                         info, pitch, energy, n = ret
                     out.append(info)
+                else:
+                    print(tg_path + "doesn't exist!")
+                    continue
 
                 if len(pitch) > 0:
                     pitch_scaler.partial_fit(pitch.reshape((-1, 1)))

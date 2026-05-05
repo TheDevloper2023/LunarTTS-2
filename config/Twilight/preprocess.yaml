@@ -1,0 +1,35 @@
+dataset: "Twilight"
+
+
+path:
+  corpus_path: "D:/TrainingShittyModels/datasets/Twilight_full"
+  lexicon_path: "C:/Users/L/Downloads/merged.dict.txt"
+  raw_path: "D:/TrainingShittyModels/datasets/Twilight_full/raw_data" 
+  preprocessed_path: "D:/TrainingShittyModels/datasets/Twilight_full/preprocessed_data"
+
+preprocessing:
+  val_size: 512
+  text:
+    # IMPORTANT: Since your dict is ARPA, make sure your cleaner doesn't 
+    # accidentally strip symbols the dict needs. 
+    text_cleaners: ["english_cleaners"]
+    language: "en"
+  audio:
+    sampling_rate: 22050
+    max_wav_value: 32768.0
+  stft:
+    filter_length: 1024
+    hop_length: 256
+    win_length: 1024
+  mel:
+    n_mel_channels: 80
+    mel_fmin: 0
+    mel_fmax: 11000 # Set to 8000 for HiFi-GAN (Standard for most FS2/HGST)
+  pitch:
+    # 'phoneme_level' is usually better for HGST as it aligns style tokens 
+    # to the hierarchical structure better than frame-level.
+    feature: "phoneme_level" 
+    normalization: True # Set to True to help the style tokens converge faster
+  energy:
+    feature: "phoneme_level"
+    normalization: True # Set to True

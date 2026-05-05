@@ -11,6 +11,9 @@ from utils.tools import to_device, log, synth_one_sample
 from model import FastSpeech2Loss
 from dataset import Dataset
 
+from model.GST.loss import TPSELoss
+
+
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -32,21 +35,40 @@ def evaluate(model, step, configs, logger=None, vocoder=None):
 
     # Get loss function
     Loss = FastSpeech2Loss(preprocess_config, model_config).to(device)
-
+    TPSE_LOSS = TPSELoss()
     # Evaluation
-    loss_sums = [0 for _ in range(6)]
+    loss_sums = [0 for _ in range(7)]
     for batchs in loader:
         for batch in batchs:
             batch = to_device(batch, device)
             with torch.no_grad():
                 # Forward
-                output = model(*(batch[2:]))
+                output = model(batch[2], batch[3], batch[4], batch[5], batch[1], *batch[6:])
+
+
+                (
+                    mel_output,
+                    postnet_output,
+                    p_pred,
+                    e_pred,
+                    d_pred,
+                    d_rounded,
+                    src_masks,
+                    mel_masks,
+                    src_lens,
+                    mel_lens,
+                    gst_embed,
+                    tpse_out
+                    ) = output
 
                 # Cal Loss
                 losses = Loss(batch, output)
+                style_loss = TPSE_LOSS(tpse_out, gst_embed)
 
                 for i in range(len(losses)):
                     loss_sums[i] += losses[i].item() * len(batch[0])
+                
+                loss_sums[6] += style_loss.item() * len(batch[0])
 
     loss_means = [loss_sum / len(dataset) for loss_sum in loss_sums]
 

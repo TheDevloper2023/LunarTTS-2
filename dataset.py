@@ -109,6 +109,15 @@ class Dataset(Dataset):
         energies = pad_1D(energies)
         durations = pad_1D(durations)
 
+
+        # Danke AI
+        mels = np.array(mels, dtype=np.float32)
+        pitches = np.array(pitches, dtype=np.float32)
+        energies = np.array(energies, dtype=np.float32)
+
+        if mels.ndim == 3 and mels.shape[-1] == 1:
+            mels = np.squeeze(mels, axis=-1)
+
         return (
             ids,
             raw_texts,

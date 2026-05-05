@@ -13,7 +13,16 @@ from utils.tools import to_device, log, synth_one_sample
 from model import FastSpeech2Loss
 from dataset import Dataset
 
+
+from model.GST.loss import TPSELoss
+
+
 from evaluate import evaluate
+
+use_fp16 = True
+#amp
+from torch.amp import GradScaler, autocast
+
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -28,7 +37,8 @@ def main(args, configs):
         "train.txt", preprocess_config, train_config, sort=True, drop_last=True
     )
     batch_size = train_config["optimizer"]["batch_size"]
-    group_size = 4  # Set this larger than 1 to enable sorting in Dataset
+    group_size = 1  # Set this larger than 1 to enable sorting in Dataset
+    print(len(dataset), batch_size)
     assert batch_size * group_size < len(dataset)
     loader = DataLoader(
         dataset,
@@ -38,14 +48,19 @@ def main(args, configs):
     )
 
     # Prepare model
+    if use_fp16:
+        scaler = GradScaler()
+
+
     model, optimizer = get_model(args, configs, device, train=True)
     model = nn.DataParallel(model)
     num_param = get_param_num(model)
     Loss = FastSpeech2Loss(preprocess_config, model_config).to(device)
+    TPSE_loss = TPSELoss()
     print("Number of FastSpeech2 Parameters:", num_param)
 
     # Load vocoder
-    vocoder = get_vocoder(model_config, device)
+    vocoder = None #get_vocoder(model_config, device)
 
     # Init logger
     for p in train_config["path"].values():
@@ -79,21 +94,51 @@ def main(args, configs):
                 batch = to_device(batch, device)
 
                 # Forward
-                output = model(*(batch[2:]))
+                with autocast(device_type="cuda", dtype=torch.float16, enabled=use_fp16):
+                    #output = model(*(batch[2:]))
+                    output = model(batch[2], batch[3], batch[4], batch[5], batch[1], *batch[6:])
+                    (
+                    mel_output,
+                    postnet_output,
+                    p_pred,
+                    e_pred,
+                    d_pred,
+                    d_rounded,
+                    src_masks,
+                    mel_masks,
+                    src_lens,
+                    mel_lens,
+                    gst_embed,
+                    tpse_out
+                    ) = output
 
-                # Cal Loss
-                losses = Loss(batch, output)
-                total_loss = losses[0]
+                    # Cal Loss
+                    losses = Loss(batch, output)
+                    style_loss = TPSE_loss(tpse_out, gst_embed)
+                    total_loss = losses[0]
+                    total_loss += style_loss
 
                 # Backward
+
                 total_loss = total_loss / grad_acc_step
-                total_loss.backward()
+
+                if use_fp16:
+                    scaler.scale(total_loss).backward()
+                else:
+                    total_loss.backward()
                 if step % grad_acc_step == 0:
                     # Clipping gradients to avoid gradient explosion
                     nn.utils.clip_grad_norm_(model.parameters(), grad_clip_thresh)
-
-                    # Update weights
-                    optimizer.step_and_update_lr()
+                    if use_fp16:
+                        scaler.unscale_(optimizer._optimizer)
+                        scaler.step(optimizer._optimizer)
+                        scaler.update()
+                        optimizer._update_learning_rate()
+                    else:
+                        # Update weights
+                        optimizer.step_and_update_lr()
+                    
+                    
                     optimizer.zero_grad()
 
                 if step % log_step == 0:
@@ -102,6 +147,7 @@ def main(args, configs):
                     message2 = "Total Loss: {:.4f}, Mel Loss: {:.4f}, Mel PostNet Loss: {:.4f}, Pitch Loss: {:.4f}, Energy Loss: {:.4f}, Duration Loss: {:.4f}".format(
                         *losses
                     )
+                    print("Style Loss: ", style_loss.item())
 
                     with open(os.path.join(train_log_path, "log.txt"), "a") as f:
                         f.write(message1 + message2 + "\n")
