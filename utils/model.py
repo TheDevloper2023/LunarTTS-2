@@ -4,8 +4,16 @@ import json
 import torch
 import numpy as np
 
+
+
+import torch.nn as nn
+import torch
+
+
+
 import hifigan
 from model import FastSpeech2, ScheduledOptim
+from vocos import Vocos
 
 
 def get_model(args, configs, device, train=False):
@@ -67,7 +75,10 @@ def get_vocoder(config, device):
         vocoder.eval()
         vocoder.remove_weight_norm()
         vocoder.to(device)
-
+    
+    elif name == "Vocos":
+        vocoder = Vocos.from_pretrained("BSC-LT/vocos-mel-22khz")
+        vocoder = vocoder.to(device)
     return vocoder
 
 
@@ -78,6 +89,8 @@ def vocoder_infer(mels, vocoder, model_config, preprocess_config, lengths=None):
             wavs = vocoder.inverse(mels / np.log(10))
         elif name == "HiFi-GAN":
             wavs = vocoder(mels).squeeze(1)
+        elif name == "Vocos":
+            wavs = vocoder.decode(mels)
 
     wavs = (
         wavs.cpu().numpy()
@@ -90,3 +103,4 @@ def vocoder_infer(mels, vocoder, model_config, preprocess_config, lengths=None):
             wavs[i] = wavs[i][: lengths[i]]
 
     return wavs
+

@@ -43,9 +43,7 @@ def main(args, configs):
     loader = DataLoader(
         dataset,
         batch_size=batch_size * group_size,
-        num_workers= 4,
         pin_memory= True,
-        persistent_workers= True,
         shuffle=True,
         collate_fn=dataset.collate_fn,
     )

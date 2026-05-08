@@ -4,6 +4,7 @@ class TPSELoss(nn.Module):
     def __init__(self):
         super().__init__()
         self.l1 = nn.L1Loss()
+        self.cosine = nn.CosineSimilarity(dim=-1)
 
     def forward(self, predicted_tokens, target):
         """
@@ -12,7 +13,12 @@ class TPSELoss(nn.Module):
         :param target: tensor shape of (batch_size, token_dim)
         :return: L1 loss
         """
-        return self.l1(predicted_tokens, target)
+        l1_loss = self.l1(predicted_tokens, target)
+        cosine_loss = 1 - self.cosine(predicted_tokens, target).mean()
+
+
+        loss = 0.3 * l1_loss + 0.7 * cosine_loss
+        return loss #self.l1(predicted_tokens, target)
     
 
 

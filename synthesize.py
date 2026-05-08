@@ -92,8 +92,8 @@ def synthesize(model, step, configs, vocoder, batchs, control_values):
         batch = to_device(batch, device)
         with torch.no_grad():
             # Forward
-            output = model(
-                *(batch[2:]),
+            output = model.infer(
+                *(batch[2], batch[3], batch[4], batch[5], batch[1], *batch[6:]),
                 p_control=pitch_control,
                 e_control=energy_control,
                 d_control=duration_control

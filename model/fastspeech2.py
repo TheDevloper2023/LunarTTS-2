@@ -8,17 +8,16 @@ import torch.nn.functional as F
 from transformer import Encoder, Decoder, PostNet
 from .modules import VarianceAdaptor
 from utils.tools import get_mask_from_lengths
-from .GST.HGST import HGST  # Hierarchical Global Style 
+from .GST.HGST import HGST
 from .GST.tp_gst import TPSE
-from transformers import RobertaModel, RobertaTokenizer
-
-p_drop = 0.25
+from .GST.BERT import TextStyleGen
+from .GST.layers import FiLM_Layer
 
 
 class FastSpeech2(nn.Module):
     """ FastSpeech2 """
 
-    def __init__(self, preprocess_config, model_config, training=False):
+    def __init__(self, preprocess_config, model_config):
         super(FastSpeech2, self).__init__()
         self.model_config = model_config
 
@@ -31,27 +30,14 @@ class FastSpeech2(nn.Module):
         if model_config["gst"]["use_gst"]:
             self.HGST = HGST(preprocess_config, model_config)
 
-            self.film_gamma = nn.Linear(model_config["transformer"]["encoder_hidden"],
-                            model_config["transformer"]["encoder_hidden"])
-            
-            self.film_beta = nn.Linear(model_config["transformer"]["encoder_hidden"],
-                                    model_config["transformer"]["encoder_hidden"])
-            
-            self.tpse_scale = nn.Parameter(torch.tensor(0.15))
-
-            self.attn = nn.Sequential(
-                nn.Linear(model_config["tpgst"]["BERT"]["bert_encoder_dim"],model_config["tpgst"]["BERT"]["bert_encoder_dim"]),
-                nn.ReLU(),
-                nn.Linear(model_config["tpgst"]["BERT"]["bert_encoder_dim"],1),
-            )
-
-
-        # Monke Patch 4 now
-        self.a = nn.Linear(2048, 1280)
-                        
-        
         #TPSE
-        self.bert_linear = TPSE(model_config)
+        self.TPSE = TPSE(model_config)
+
+
+        self.FiLM = FiLM_Layer(
+            model_config["transformer"]["encoder_hidden"],
+            model_config["gst"]["token_size"]
+        )
 
         self.mel_linear = nn.Linear(
             model_config["transformer"]["decoder_hidden"],
@@ -77,13 +63,7 @@ class FastSpeech2(nn.Module):
 
         #roBERTa
         self.bert_train = model_config["tpgst"]["BERT"]["bert_train"]
-        self.bert_encoder_dim = model_config["tpgst"]["BERT"]["bert_encoder_dim"]
-
-        # Load pretrained BERT model
-        bert_checkpoint = model_config["tpgst"]["BERT"]["bert_checkpoint_path"]
-        self.roberta_tokenizer = RobertaTokenizer.from_pretrained(bert_checkpoint, local_files_only=False)
-        self.roberta = RobertaModel.from_pretrained(bert_checkpoint, local_files_only=False).to(self.device) 
-
+        self.TextStyleGen = TextStyleGen(model_config["tpgst"]["BERT"]["bert_encoder_dim"], model_config["transformer"]["encoder_hidden"], model_name=model_config["tpgst"]["BERT"]["bert_checkpoint_path"])
 
     # Train
     def forward(
@@ -111,57 +91,29 @@ class FastSpeech2(nn.Module):
         )
 
         output = self.encoder(texts, src_masks)
-
-        #RoBERTa
-        bert_tokens = self.roberta_tokenizer(raw_texts, return_tensors="pt", padding=True)
-        bert_tokens = bert_tokens.to("cuda:0") #TODO device
-        with torch.no_grad():
-            bert_outputs = self.roberta(**bert_tokens)
-
-
-
-        # Combine the best of both (pooler - general intent; last hidden state - I forgot) to make it more expressive
-        bert_cls = bert_outputs.pooler_output
-        bert_hidden = bert_outputs.last_hidden_state
-
-        weights = torch.softmax(self.attn(bert_hidden), dim=1)
-        bert_attn = (weights * bert_hidden).sum(dim=1)
         
-        bert_embed = torch.cat([bert_attn, bert_cls], dim=-1)
+        # GST
+        gst_out = self.HGST(mels, mel_lens)
+        gst_out = gst_out.squeeze(1)
 
-        bert_embed = bert_embed.unsqueeze(1)   # [B, 1, D]
-        bert_embed_expanded = bert_embed.expand(-1, output.size(1), -1)
 
-        # TPSE gen
-        tpse_out = 0
-        if self.bert_linear is not None:
-            combined_embed = torch.cat([output, bert_embed_expanded], dim=-1)
-            
-            combined_embed = self.a(combined_embed)
-            tpse_out = self.bert_linear(combined_embed)
-            tpse_out = tpse_out.unsqueeze(1)          
-        
+        # Inject style_vec
+        output = self.FiLM(output, gst_out.deatch())
+
+
+        # BERT
+        bert_embedding = self.TextStyleGen(raw_texts, max_src_len, self.bert_train)
+
+
+        # TPSE
+        tpse_input = torch.cat([bert_embedding, output], dim=-1)
+        tpse_out = self.TPSE(tpse_input)
+
         if self.speaker_emb is not None:
             output = output + self.speaker_emb(speakers).unsqueeze(1).expand(
                 -1, max_src_len, -1
             )
         
-        # GST gen
-        embedded_gst = self.HGST(mels, mel_lens)
-        embedded_gst = F.dropout(embedded_gst, p_drop)
-        #embedded_gst = embedded_gst.squeeze(1)
-
-        
-
-        gamma = self.film_gamma(embedded_gst)
-        beta = self.film_beta(embedded_gst)
-        
-        gamma = gamma.expand(-1, output.size(1), -1)               # (B, T_enc, H_enc)
-        beta  = beta.expand(-1, output.size(1), -1)
-
-        # GST inject
-        output = output * (gamma + 1) + beta
-
         
         (
             output,
@@ -200,12 +152,12 @@ class FastSpeech2(nn.Module):
             mel_masks,
             src_lens,
             mel_lens,
-            embedded_gst,
+            gst_out,
             tpse_out
         )
     
 
-     # Validation / Eval / Synthesis
+    # Validate / Synthesis
     def infer(
         self,
         speakers,
@@ -232,48 +184,24 @@ class FastSpeech2(nn.Module):
 
         output = self.encoder(texts, src_masks)
 
-        #RoBERTa
-        bert_tokens = self.roberta_tokenizer(raw_texts, return_tensors="pt", padding=True)
-        bert_tokens = bert_tokens.to("cuda:0") #TODO device
-        with torch.no_grad():
-            bert_outputs = self.roberta(**bert_tokens)
+        # BERT
+        bert_embedding = self.TextStyleGen(raw_texts, max_src_len, self.bert_train)
 
 
-        # Combine the best of both (pooler - general intent; last hidden state - I forgot) to make it more expressive
-        bert_cls = bert_outputs.pooler_output
-        bert_hidden = bert_outputs.last_hidden_state
-
-        weights = torch.softmax(self.attn(bert_hidden), dim=1)
-        bert_attn = (weights * bert_hidden).sum(dim=1)
+        # TPSE
+        tpse_input = torch.cat([bert_embedding, output], dim=-1)
         
-        bert_embed = torch.cat([bert_attn, bert_cls], dim=-1)
+        tpse_out = self.TPSE(tpse_input)
 
-        bert_embed = bert_embed.unsqueeze(1)   # [B, 1, D]
-        bert_embed_expanded = bert_embed.expand(-1, output.size(1), -1)
 
-        # TPSE gen
-        tpse_out = 0
-        if self.bert_linear is not None:
-            combined_embed = torch.cat([output, bert_embed_expanded], dim=-1)
-            
-            combined_embed = self.a(combined_embed)
-            tpse_out = self.bert_linear(combined_embed)
-            embedded_gst = tpse_out.unsqueeze(1) if tpse_out.dim() == 2 else tpse_out         
-        
+        # Inject style_vec
+        output = self.FiLM(output, tpse_out)
+
         if self.speaker_emb is not None:
             output = output + self.speaker_emb(speakers).unsqueeze(1).expand(
                 -1, max_src_len, -1
             )
         
-        gamma = self.film_gamma(embedded_gst)
-        beta = self.film_beta(embedded_gst)
-        
-        gamma = gamma.expand(-1, output.size(1), -1)               # (B, T_enc, H_enc)
-        beta  = beta.expand(-1, output.size(1), -1)
-
-        # GST inject
-        output = output * (gamma + 1) + beta
-
         
         (
             output,
@@ -312,7 +240,8 @@ class FastSpeech2(nn.Module):
             mel_masks,
             src_lens,
             mel_lens,
-            embedded_gst,
+            None,
             tpse_out
         )
     
+   
