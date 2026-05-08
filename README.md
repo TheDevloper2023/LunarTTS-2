@@ -28,6 +28,7 @@ Feel free to train your own, but this repo is constantly changing, and your mode
 
 # Updates
 5.5.2026 - Uploaded to GitHub
+8.5.2026 - Refactor, I think TPGST is good.
 
 
 # Credits
