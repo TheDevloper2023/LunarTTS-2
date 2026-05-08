@@ -27,8 +27,13 @@ There will be a release once I feel the architecture is stable and mature enough
 Feel free to train your own, but this repo is constantly changing, and your model could be out of date.
 
 # Updates
-5.5.2026 - Uploaded to GitHub
-8.5.2026 - Refactor, I think TPGST is good.
+**5.5.2026** 
+- Uploaded to GitHub
+
+**8.5.2026**
+- GST + TPSE rework for better expresivity/
+- TPSE loss is now a hybrid L1 cosine loss system `l1_loss * 0.3 + cosine_loss * 0.7`
+- New roBERTa conditioning pipeline
 
 
 # Credits
