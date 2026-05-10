@@ -115,7 +115,7 @@ def main(args, configs):
 
                     # Cal Loss
                     losses = Loss(batch, output)
-                    style_loss = TPSE_loss(tpse_out, gst_embed)
+                    style_loss = TPSE_loss(tpse_out, gst_embed.detach())
                     total_loss = losses[0]
                     total_loss += style_loss
 
@@ -145,10 +145,9 @@ def main(args, configs):
                 if step % log_step == 0:
                     losses = [l.item() for l in losses]
                     message1 = "Step {}/{}, ".format(step, total_step)
-                    message2 = "Total Loss: {:.4f}, Mel Loss: {:.4f}, Mel PostNet Loss: {:.4f}, Pitch Loss: {:.4f}, Energy Loss: {:.4f}, Duration Loss: {:.4f}".format(
-                        *losses
+                    message2 = "Total Loss: {:.4f}, Mel Loss: {:.4f}, Mel PostNet Loss: {:.4f}, Pitch Loss: {:.4f}, Energy Loss: {:.4f}, Duration Loss: {:.4f} Style Loss: {::.4f}".format(
+                        *losses, style_loss
                     )
-                    print("Style Loss: ", style_loss.item())
 
                     with open(os.path.join(train_log_path, "log.txt"), "a") as f:
                         f.write(message1 + message2 + "\n")

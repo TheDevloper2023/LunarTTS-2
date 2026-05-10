@@ -98,7 +98,7 @@ class FastSpeech2(nn.Module):
 
 
         # Inject style_vec
-        output = self.FiLM(output, gst_out.deatch())
+        output = self.FiLM(output, gst_out)
 
 
         # BERT
