@@ -1,10 +1,10 @@
 transformer:
   encoder_layer: 4
   encoder_head: 2
-  encoder_hidden: 512
+  encoder_hidden: 1024
   decoder_layer: 6
   decoder_head: 2
-  decoder_hidden: 512
+  decoder_hidden: 1024
   conv_filter_size: 512 #I think baseline vanila nvidia/tt2
   conv_kernel_size: [9, 1]
   encoder_dropout: 0.2
@@ -35,10 +35,10 @@ tpgst:
         tpse_fc_layers: 3
     BERT:
         bert_encoder_dim: 768
-        bert_checkpoint_path: "cardiffnlp/twitter-roberta-base-emoji-latest" #'FacebookAI/roberta-base' #Can be huggingface repo thingy or local bert model
+        bert_checkpoint_path: 'FacebookAI/roberta-base' #'FacebookAI/roberta-base' #Can be huggingface repo thingy or local bert model
         bert_save_in_checkpoint: False
         bert_load_from_checkpoint: False
-        bert_train: False
+        bert_train: True
 
 
 multi_speaker: False

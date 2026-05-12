@@ -63,7 +63,7 @@ def evaluate(model, step, configs, logger=None, vocoder=None):
 
                 # Cal Loss
                 losses = Loss(batch, output)
-                style_loss = TPSE_LOSS(tpse_out, gst_embed)
+                style_loss = TPSE_LOSS(tpse_out, gst_embed.detach())
 
                 for i in range(len(losses)):
                     loss_sums[i] += losses[i].item() * len(batch[0])
@@ -72,7 +72,7 @@ def evaluate(model, step, configs, logger=None, vocoder=None):
 
     loss_means = [loss_sum / len(dataset) for loss_sum in loss_sums]
 
-    message = "Validation Step {}, Total Loss: {:.4f}, Mel Loss: {:.4f}, Mel PostNet Loss: {:.4f}, Pitch Loss: {:.4f}, Energy Loss: {:.4f}, Duration Loss: {:.4f}".format(
+    message = "Validation Step {}, Total Loss: {:.4f}, Mel Loss: {:.4f}, Mel PostNet Loss: {:.4f}, Pitch Loss: {:.4f}, Energy Loss: {:.4f}, Duration Loss: {:.4f}, Style Loss: {:.4f}".format(
         *([step] + [l for l in loss_means])
     )
 

@@ -1,12 +1,12 @@
 transformer:
   encoder_layer: 4
   encoder_head: 2
-  encoder_hidden: 1024
+  encoder_hidden: 512
   decoder_layer: 6
   decoder_head: 2
-  decoder_hidden: 1024
-  conv_filter_size: 1024
-  conv_kernel_size: [9 1]
+  decoder_hidden: 512
+  conv_filter_size: 512 #I think baseline vanila nvidia/tt2
+  conv_kernel_size: [9, 1]
   encoder_dropout: 0.2
   decoder_dropout: 0.2
 
@@ -22,32 +22,29 @@ variance_embedding:
 
 gst:
    use_gst: True
-   conv_filters: [32 32 64 64 128 128]
-   gru_hidden: 256
+   conv_filters: [32, 32, 64, 64, 128, 128]
+   gru_hidden: 512
    token_size: 512
-   n_style_token: 64
-   attn_head: 8
-   encoder_embedding_dim: 1024
-   n_HGST_layers: 5
-  
+   n_style_token: 32
+   attn_head: 4
+   n_HGST_layers: 3
 tpgst:
     GST:
-        tpse_gru_hidden_state_dim: 256
-        tpse_fc_layer_dim: 256
-        tpse_fc_layers: 2
-        
+        tpse_gru_hidden_state_dim: 512
+        tpse_fc_layer_dim: 512
+        tpse_fc_layers: 3
     BERT:
         bert_encoder_dim: 768
-        bert_checkpoint_path: 'bert/rubert_cased_L-12_H-768_A-12_pt/' #Can be huggingface repo thingy or local bert model
+        bert_checkpoint_path: 'FacebookAI/roberta-base' #'FacebookAI/roberta-base' #Can be huggingface repo thingy or local bert model
         bert_save_in_checkpoint: False
         bert_load_from_checkpoint: False
-        bert_train: False
+        bert_train: True
 
 
 multi_speaker: False
 
-max_seq_len: 1000
+max_seq_len: 650
 
 vocoder:
-  model: "HiFi-GAN" # support 'HiFi-GAN' 'MelGAN'
+  model: "Vocos" # support 'HiFi-GAN' 'MelGAN'
   speaker: "LJSpeech" # support  'LJSpeech' 'universal'
