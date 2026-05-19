@@ -1,4 +1,19 @@
 # LunarTTS-2
+## What is the branch doing?
+It separates training into 2 Stages:
+
+- **Stage 1**:
+  - Train HGST + FastSpeech2 until HGST is good and FastSpeech2 has converged
+
+- **Stage 2**:
+  - Teach TPSE to map BERT outputs to HGST outputs.
+
+>The reason is to simplify training, ensure TPSE learns properly, and to have quicker iteration for experimentation.
+>This idea is taken from [TEMOTTS](https://arxiv.org/abs/2405.11413). They have similar ideas to Lunar-TTS (except the use of RoBERTa + TPSE, Princess Luna Branding, HGSTs)
+
+
+---
+
 LunarTTS 2 is a WIP FastSpeech2 modification that adds Text Predicting GSTs influenced by RoBERTa to create a Context-aware, emotion-conditioned FastSpeech2 Architecture
 
 This model uses Hierarchical GST (HGST) with contextual embeddings from RoBERTa to infer style from text directly
